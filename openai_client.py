@@ -1,17 +1,18 @@
+# openai_client.py
 from openai import OpenAI
 import os
 import pandas as pd
+from typing import List, Dict, Any
 import json
 
 class OpenAIClient:
     def __init__(self, api_key: str = None, model: str = "gpt-4o-mini"):
-        # Try to get API key from parameter, then environment
-        final_api_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not final_api_key:
+        if api_key:
+            self.client = OpenAI(api_key=api_key)
+        elif os.getenv("OPENAI_API_KEY"):
+            self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        else:
             raise ValueError("OpenAI API key not provided")
-        
-        # Initialize client with only the API key
-        self.client = OpenAI(api_key=final_api_key)
         self.model = model
     
     def generate_analysis_code(self, question: str, df: pd.DataFrame) -> str:
@@ -38,6 +39,28 @@ class OpenAIClient:
         7. For visualizations, use matplotlib or seaborn and save the plot to 'output_plot.png'
         8. Return only the Python code without any additional text or markdown formatting
         9. Make sure the code is syntactically correct and can be executed directly
+        
+        Example for "count of movies vs TV shows":
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        
+        # Count the occurrences of each type
+        type_counts = df['type'].value_counts()
+        
+        # Print the results
+        print("Count of each type:")
+        for idx, count in type_counts.items():
+            print(f"{idx}: {count}")
+            
+        # Create a bar chart
+        plt.figure(figsize=(10, 6))
+        type_counts.plot(kind='bar')
+        plt.title('Count of Movies vs TV Shows')
+        plt.xlabel('Type')
+        plt.ylabel('Count')
+        plt.tight_layout()
+        plt.savefig('output_plot.png')
+        plt.show()
         """
         
         messages = [
@@ -49,7 +72,7 @@ class OpenAIClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                temperature=0.1,
+                temperature=0.1,  # Low temperature for more deterministic code
                 max_tokens=2000
             )
             return response.choices[0].message.content
