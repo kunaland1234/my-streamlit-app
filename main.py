@@ -36,6 +36,7 @@ def init_session_state():
 def initialize_openai_client(api_key: str, model: str):
     """Initialize the OpenAI client"""
     try:
+        # Remove proxies argument from client initialization
         st.session_state.openai_client = OpenAIClient(api_key, model)
         return True
     except Exception as e:
@@ -83,6 +84,12 @@ def main():
         options=model_options,
         index=model_options.index(st.session_state.selected_model) if st.session_state.selected_model in model_options else 0
     )
+    
+    # If proxies are needed, set them using environment variables
+    if os.environ.get("HTTP_PROXY"):
+        os.environ["HTTP_PROXY"] = os.environ.get("HTTP_PROXY")
+    if os.environ.get("HTTPS_PROXY"):
+        os.environ["HTTPS_PROXY"] = os.environ.get("HTTPS_PROXY")
     
     if st.session_state.openai_client is None or st.session_state.selected_model != selected_model:
         if initialize_openai_client(api_key, selected_model):
