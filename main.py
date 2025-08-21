@@ -1,14 +1,17 @@
+# main.py
 import streamlit as st
 import pandas as pd
 import os
 from openai_client import OpenAIClient
 from data_processor import DataProcessor
 from utils import is_data_analysis_question, clean_generated_code
+import json
+from PIL import Image
 import io
 
 # Set up the page
 st.set_page_config(
-    page_title="AI-Powered Data Analyst",
+    page_title="AI-Powered Data Analyst v1.0",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -28,6 +31,8 @@ def init_session_state():
         st.session_state.data_processor = DataProcessor()
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = "gpt-4o-mini"
+    if "api_key_configured" not in st.session_state:
+        st.session_state.api_key_configured = False
 
 def initialize_openai_client(api_key: str, model: str):
     """Initialize the OpenAI client"""
@@ -46,35 +51,34 @@ def handle_api_error(response: str):
     return False
 
 def main():
-    st.title("🤖 AI-Powered Data Analyst")
+    st.title("🤖 AI-Powered Data Analyst v1.0")
     st.markdown("Upload your CSV, ask questions about your data, and get instant analysis results.")
     
     # Initialize session state
     init_session_state()
     
-    # API key setup
+    # API key setup - using secrets.toml or environment variable
     api_key = None
-    
-    # Check for API key in environment variables (for Streamlit Cloud)
-    if "OPENAI_API_KEY" in os.environ:
-        api_key = os.environ["OPENAI_API_KEY"]
-        st.sidebar.success("API key loaded from environment!")
-    # Check for API key in Streamlit secrets
-    elif hasattr(st, "secrets") and "OPENAI_API_KEY" in st.secrets:
-        api_key = st.secrets["OPENAI_API_KEY"]
-        st.sidebar.success("API key loaded from secrets!")
+    if "openai_api_key" in st.secrets:
+        api_key = st.secrets["openai_api_key"]
+        st.session_state.api_key_configured = True
+    elif os.environ.get("OPENAI_API_KEY"):
+        api_key = os.environ.get("OPENAI_API_KEY")
+        st.session_state.api_key_configured = True
     else:
-        # Fallback to user input
-        api_key = st.sidebar.text_input("Enter your OpenAI API key:", type="password")
-        if api_key:
-            st.sidebar.success("API key set successfully!")
-        else:
-            st.sidebar.warning("Please enter your OpenAI API key to continue.")
-            return
+        st.sidebar.error("OpenAI API key not found")
+        st.info("Please add your OpenAI API key to Streamlit secrets or set OPENAI_API_KEY environment variable")
+        st.session_state.api_key_configured = False
+    
+    if not st.session_state.api_key_configured:
+        return
     
     # Model selection in sidebar
     st.sidebar.header("Model Selection")
-    model_options = ["gpt-4o-mini", "gpt-4o"]
+    model_options = [
+        "gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4",
+        "gpt-3.5-turbo"
+    ]
     selected_model = st.sidebar.selectbox(
         "Select AI Model",
         options=model_options,
@@ -145,7 +149,7 @@ def main():
             with st.chat_message(message["role"]):
                 if message["role"] == "assistant" and "code" in message:
                     st.code(message["content"], language="python")
-                    if "output" in message:
+                    if "output" in message and message["output"]:
                         st.text("Output:")
                         st.text(message["output"])
                     if "visualization" in message and message["visualization"]:
@@ -199,13 +203,15 @@ def main():
                     
                     if result and result['success']:
                         # Display output
-                        st.text("Output:")
-                        st.text(result['output'])
+                        if result['output']:
+                            st.text("Output:")
+                            st.text(result['output'])
                         
                         # Check if there are visualizations
                         visualization = None
                         if 'visualization' in result and result['visualization']:
                             try:
+                                # Convert BytesIO to image
                                 if isinstance(result['visualization'], io.BytesIO):
                                     result['visualization'].seek(0)
                                     st.image(result['visualization'])
@@ -230,8 +236,9 @@ def main():
                         st.error("Error executing analysis code")
                         if result:
                             st.error(f"Error: {result.get('error', 'Unknown error')}")
-                            st.text("Output before error:")
-                            st.text(result.get('output', ''))
+                            if result.get('output'):
+                                st.text("Output before error:")
+                                st.text(result.get('output'))
                         
                         st.session_state.messages.append({
                             "role": "assistant", 
