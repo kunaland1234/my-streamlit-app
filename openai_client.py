@@ -6,9 +6,8 @@ import json
 
 class OpenAIClient:
     def __init__(self, api_key: str = None, model: str = "gpt-4o-mini"):
-        # For newer versions of the OpenAI library, we need to initialize differently
+        # Initialize the client with just the API key
         if api_key:
-            # This is the correct way to initialize the client with the new API
             self.client = OpenAI(api_key=api_key)
         elif os.getenv("OPENAI_API_KEY"):
             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
