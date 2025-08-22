@@ -147,8 +147,8 @@ def main():
         
         # Model selection
         model_options = [
-            "gpt-4o-mini", "gpt-4o", "gpt-4o-2024-11-20", "gpt-4-turbo", 
-            "gpt-4", "gpt-3.5-turbo"
+            "gpt-4o-mini", "gpt-5-nano",
+            "gpt-4.1-nano", "gpt-4.1-mini"
         ]
         selected_model = st.selectbox(
             "🧠 Select AI Model",
